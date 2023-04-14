@@ -21,6 +21,7 @@ def open_archive(archive):
     else:
         raise ValueError("Unsupported archive type")
 
+
 def search_files_in_archive(archive_obj, extension):
     file_paths = []
 
@@ -28,7 +29,7 @@ def search_files_in_archive(archive_obj, extension):
         for member in archive_obj.infolist():
             if member.filename.endswith(extension):
                 file_paths.append(member.filename)
-            elif member.filename.endswith(('.zip', '.tar.gz', '.tar.bz2')):
+            elif member.filename.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2')):
                 with archive_obj.open(member) as nested_archive:
                     nested_archive_data = io.BytesIO(nested_archive.read())
                     nested_archive_obj = open_archive(nested_archive_data)
@@ -38,7 +39,7 @@ def search_files_in_archive(archive_obj, extension):
         for member in archive_obj.getmembers():
             if member.isfile() and member.name.endswith(extension):
                 file_paths.append(member.name)
-            elif member.isfile() and member.name.endswith(('.zip', '.tar.gz', '.tar.bz2')):
+            elif member.isfile() and member.name.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2')):
                 with archive_obj.extractfile(member) as nested_archive:
                     nested_archive_data = io.BytesIO(nested_archive.read())
                     nested_archive_obj = open_archive(nested_archive_data)
@@ -47,6 +48,7 @@ def search_files_in_archive(archive_obj, extension):
     
     archive_obj.close()
     return file_paths
+
 
 def main():
     archive = 'path/to/compressed/file.zip'  # 圧縮ファイルのパスを指定
