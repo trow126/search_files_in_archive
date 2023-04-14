@@ -27,6 +27,13 @@ def open_archive(archive):
     else:
         raise ValueError("Unsupported archive type")
 
+def decompress_gz_bz2(fileobj):
+    with bz2.open(fileobj) as bz2_file:
+        decompressed_data = bz2_file.read()
+        gz_data = io.BytesIO(decompressed_data)
+        tar_data = gzip.GzipFile(fileobj=gz_data)
+        return tar_data
+
 def search_files_in_archive(archive_obj, extension):
     file_paths = []
 
@@ -34,20 +41,28 @@ def search_files_in_archive(archive_obj, extension):
         for member in archive_obj.infolist():
             if member.filename.endswith(extension):
                 file_paths.append(member.filename)
-            elif member.filename.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2')):
+            elif member.filename.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2', '.tar.gz.bz2')):
                 with archive_obj.open(member) as nested_archive:
                     nested_archive_data = io.BytesIO(nested_archive.read())
-                    nested_archive_obj = open_archive(nested_archive_data)
+                    if member.filename.endswith('.tar.gz.bz2'):
+                        tar_gz_data = decompress_gz_bz2(nested_archive_data)
+                        nested_archive_obj = open_archive(tar_gz_data)
+                    else:
+                        nested_archive_obj = open_archive(nested_archive_data)
                     if nested_archive_obj:
                         file_paths.extend(search_files_in_archive(nested_archive_obj, extension))
     elif isinstance(archive_obj, tarfile.TarFile):
         for member in archive_obj.getmembers():
             if member.isfile() and member.name.endswith(extension):
                 file_paths.append(member.name)
-            elif member.isfile() and member.name.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2')):
+            elif member.isfile() and member.name.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2', '.tar.gz.bz2')):
                 with archive_obj.extractfile(member) as nested_archive:
                     nested_archive_data = io.BytesIO(nested_archive.read())
-                    nested_archive_obj = open_archive(nested_archive_data)
+                    if member.name.endswith('.tar.gz.bz2'):
+                        tar_gz_data = decompress_gz_bz2(nested_archive_data)
+                        nested_archive_obj = open_archive(tar_gz_data)
+                    else:
+                        nested_archive_obj = open_archive(nested_archive_data)
                     if nested_archive_obj:
                         file_paths.extend(search_files_in_archive(nested_archive_obj, extension))
     elif isinstance(archive_obj, (gzip.GzipFile, bz2.BZ2File)):
@@ -74,3 +89,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
