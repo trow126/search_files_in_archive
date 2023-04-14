@@ -27,6 +27,7 @@ def search_files_in_archive(archive_obj, extension):
 
     if isinstance(archive_obj, zipfile.ZipFile):
         for member in archive_obj.infolist():
+            print(f"ZIP: Checking {member.filename}")
             if member.filename.endswith(extension):
                 file_paths.append(member.filename)
             elif member.filename.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2')):
@@ -37,6 +38,7 @@ def search_files_in_archive(archive_obj, extension):
                         file_paths.extend(search_files_in_archive(nested_archive_obj, extension))
     elif isinstance(archive_obj, tarfile.TarFile):
         for member in archive_obj.getmembers():
+            print(f"TAR: Checking {member.name}")
             if member.isfile() and member.name.endswith(extension):
                 file_paths.append(member.name)
             elif member.isfile() and member.name.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2')):
