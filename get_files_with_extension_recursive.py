@@ -38,6 +38,61 @@ def decompress_gz_bz2(fileobj):
         gz_data = io.BytesIO(decompressed_data)
         tar_data = gzip.GzipFile(fileobj=gz_data)
         return tar_data
+    
+def process_tar_members(archive_obj, extension, file_paths, parent=""):
+    for member in archive_obj.getmembers():
+        print("Processing TAR member:", member.name)
+        current_path = f"{parent}/{member.name}"
+        if member.isfile() and member.name.endswith(extension):
+            file_paths.append(current_path)
+        elif member.isfile() and member.name.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2', '.tar.gz.bz2')):
+            with archive_obj.extractfile(member) as nested_archive:
+                nested_archive_data = io.BytesIO(nested_archive.read())
+                nested_archive_obj = open_archive(nested_archive_data)
+                if nested_archive_obj:
+                    file_paths.extend(search_files_in_archive(nested_archive_obj, extension, current_path))
+        elif member.isdir():
+            process_tar_members(archive_obj, extension, file_paths, current_path)
+            
+            
+2 / 2
+
+理解しました。それでは、階層の深いフォルダ構造や、複数の圧縮ファイルが含まれる場合に対応できるようにコードを改良しましょう。
+
+ここでは、階層構造に対応するために再帰関数を使用します。また、tarファイル内のディレクトリ処理に関連する問題を修正しました。
+
+python
+Copy code
+import io
+import zipfile
+import tarfile
+import gzip
+import bz2
+
+
+def open_archive(archive):
+    # ... (open_archive関数のコードは変更なし)
+
+
+def decompress_gz_bz2(gz_bz2_data):
+    # ... (decompress_gz_bz2関数のコードは変更なし)
+
+
+def process_tar_members(archive_obj, extension, file_paths, parent=""):
+    for member in archive_obj.getmembers():
+        print("Processing TAR member:", member.name)
+        current_path = f"{parent}/{member.name}"
+        if member.isfile() and member.name.endswith(extension):
+            file_paths.append(current_path)
+        elif member.isfile() and member.name.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2', '.tar.gz.bz2')):
+            with archive_obj.extractfile(member) as nested_archive:
+                nested_archive_data = io.BytesIO(nested_archive.read())
+                nested_archive_obj = open_archive(nested_archive_data)
+                if nested_archive_obj:
+                    file_paths.extend(search_files_in_archive(nested_archive_obj, extension, current_path))
+        elif member.isdir():
+            process_tar_members(archive_obj, extension, file_paths, current_path)
+
 
 def search_files_in_archive(archive_obj, extension, parent=""):
     file_paths = []
@@ -55,24 +110,7 @@ def search_files_in_archive(archive_obj, extension, parent=""):
                     if nested_archive_obj:
                         file_paths.extend(search_files_in_archive(nested_archive_obj, extension, current_path))
     elif isinstance(archive_obj, tarfile.TarFile):
-        for member in archive_obj.getmembers():
-            print("Processing TAR member:", member.name)
-            current_path = f"{parent}/{member.name}"
-            if member.isfile() and member.name.endswith(extension):
-                file_paths.append(current_path)
-            elif member.isfile() and member.name.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2', '.tar.gz.bz2')):
-                with archive_obj.extractfile(member) as nested_archive:
-                    nested_archive_data = io.BytesIO(nested_archive.read())
-                    nested_archive_obj = open_archive(nested_archive_data)
-                    if nested_archive_obj:
-                        file_paths.extend(search_files_in_archive(nested_archive_obj, extension, current_path))
-            elif member.isdir():  # .tar内のディレクトリを処理
-                with archive_obj.extractfile(member) as nested_dir:
-                    if nested_dir is not None:
-                        nested_archive_data = io.BytesIO(nested_dir.read())
-                        nested_archive_obj = open_archive(nested_archive_data)
-                        if nested_archive_obj:
-                            file_paths.extend(search_files_in_archive(nested_archive_obj, extension, current_path))
+        process_tar_members(archive_obj, extension, file_paths, parent)
 
     elif isinstance(archive_obj, (gzip.GzipFile, bz2.BZ2File)):
         archive_data = archive_obj.read()
