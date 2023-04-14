@@ -1,4 +1,3 @@
-import os
 import io
 import zipfile
 import tarfile
@@ -6,7 +5,15 @@ import tarfile
 def get_files_with_extension_recursive(archive, extension):
     file_paths = []
 
-    if isinstance(archive, str):
+    if isinstance(archive, io.BytesIO):
+        archive.seek(0)
+        if zipfile.is_zipfile(archive):
+            archive_obj = zipfile.ZipFile(archive, 'r')
+        elif tarfile.is_tarfile(archive):
+            archive_obj = tarfile.open(fileobj=archive, mode='r:*')
+        else:
+            return file_paths
+    elif isinstance(archive, str):
         if zipfile.is_zipfile(archive):
             archive_obj = zipfile.ZipFile(archive, 'r')
         elif tarfile.is_tarfile(archive):
@@ -14,7 +21,7 @@ def get_files_with_extension_recursive(archive, extension):
         else:
             raise ValueError("Unsupported file format")
     else:
-        archive_obj = archive
+        raise ValueError("Unsupported archive type")
 
     if isinstance(archive_obj, zipfile.ZipFile):
         for member in archive_obj.infolist():
@@ -32,6 +39,8 @@ def get_files_with_extension_recursive(archive, extension):
                 with archive_obj.extractfile(member) as nested_archive:
                     nested_archive_data = io.BytesIO(nested_archive.read())
                     file_paths.extend(get_files_with_extension_recursive(nested_archive_data, extension))
+    
+    archive_obj.close()
     return file_paths
 
 def main():
