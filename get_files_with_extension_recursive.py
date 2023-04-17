@@ -1,101 +1,71 @@
-import io
 import zipfile
 import tarfile
+import io
 import gzip
 import bz2
+import os
 
-def open_archive(archive):
-    if isinstance(archive, io.BytesIO):
-        archive.seek(0)
-        if zipfile.is_zipfile(archive):
-            return zipfile.ZipFile(archive, 'r')
-        elif tarfile.is_tarfile(archive):
-            return tarfile.open(fileobj=archive, mode='r:*')
-        elif gzip._GzipReader(archive).is_gzip():
-            return gzip.GzipFile(fileobj=archive)
-        elif bz2.BZ2Decompressor().is_valid_stream(archive.getvalue()[:10]):
-            return bz2.open(archive)
-        else:
-            return None
-    elif isinstance(archive, str):
-        if zipfile.is_zipfile(archive):
-            return zipfile.ZipFile(archive, 'r')
-        elif tarfile.is_tarfile(archive):
-            return tarfile.open(archive, 'r:*')
-        elif gzip.open(archive).peek(10).startswith(b'\x1f\x8b\x08'):
-            return gzip.open(archive)
-        elif bz2.open(archive).peek(10).startswith(b'\x42\x5a\x68'):
-            return bz2.open(archive)
-        else:
-            raise ValueError("Unsupported file format")
+
+def open_archive(file_data, filename):
+    if filename.endswith('.zip'):
+        return zipfile.ZipFile(file_data)
+    elif filename.endswith('.tar'):
+        return tarfile.open(fileobj=file_data)
+    elif filename.endswith('.tar.gz'):
+        return tarfile.open(fileobj=file_data, mode='r:gz')
+    elif filename.endswith('.tar.bz2'):
+        return tarfile.open(fileobj=file_data, mode='r:bz2')
+    elif filename.endswith('.gz'):
+        return gzip.GzipFile(fileobj=file_data)
+    elif filename.endswith('.bz2'):
+        return bz2.BZ2File(file_data)
     else:
-        raise ValueError("Unsupported archive type")
+        return None
 
 
-def decompress_gz_bz2(fileobj):
-    with bz2.open(fileobj) as bz2_file:
-        decompressed_data = bz2_file.read()
-        gz_data = io.BytesIO(decompressed_data)
-        tar_data = gzip.GzipFile(fileobj=gz_data)
-        return tar_data
-    
-def process_tar_members(archive_obj, extension, file_paths, parent=""):
-    for member in archive_obj.getmembers():
-        print("Processing TAR member:", member.name)
-        current_path = f"{parent}/{member.name}"
-        if member.isfile() and member.name.endswith(extension):
-            file_paths.append(current_path)
-        elif member.isfile() and member.name.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2', '.tar.gz.bz2')):
-            with archive_obj.extractfile(member) as nested_archive:
-                nested_archive_data = io.BytesIO(nested_archive.read())
-                nested_archive_obj = open_archive(nested_archive_data)
-                if nested_archive_obj:
-                    file_paths.extend(search_files_in_archive(nested_archive_obj, extension, current_path))
-        elif member.isdir():
-            process_tar_members(archive_obj, extension, file_paths, current_path)
-            
-def search_files_in_archive(archive_obj, extension, parent=""):
+def search_files_in_archive(archive_obj, extension, current_path=''):
     file_paths = []
 
-    if isinstance(archive_obj, zipfile.ZipFile):
-        for member in archive_obj.infolist():
-            print("Processing ZIP member:", member.filename)
-            current_path = f"{parent}/{member.filename}"
-            if member.filename.endswith(extension):
-                file_paths.append(current_path)
-            elif member.filename.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2', '.tar.gz.bz2')):
-                with archive_obj.open(member) as nested_archive:
-                    nested_archive_data = io.BytesIO(nested_archive.read())
-                    nested_archive_obj = open_archive(nested_archive_data)
-                    if nested_archive_obj:
-                        file_paths.extend(search_files_in_archive(nested_archive_obj, extension, current_path))
-    elif isinstance(archive_obj, tarfile.TarFile):
-        process_tar_members(archive_obj, extension, file_paths, parent)
-
-    elif isinstance(archive_obj, (gzip.GzipFile, bz2.BZ2File)):
-        archive_data = archive_obj.read()
-        nested_archive_data = io.BytesIO(archive_data)
-        nested_archive_obj = open_archive(nested_archive_data)
+    if isinstance(archive_obj, (gzip.GzipFile, bz2.BZ2File)):
+        nested_archive_data = io.BytesIO(archive_obj.read())
+        nested_archive_obj = open_archive(nested_archive_data, archive_obj.name)
         if nested_archive_obj:
-            file_paths.extend(search_files_in_archive(nested_archive_obj, extension, parent))
+            file_paths.extend(search_files_in_archive(nested_archive_obj, extension, current_path))
+    else:
+        if isinstance(archive_obj, zipfile.ZipFile):
+            members = archive_obj.infolist()
+        else:
+            members = archive_obj.getmembers()
 
-    if hasattr(archive_obj, 'close'):
-        archive_obj.close()
+        for member in members:
+            if isinstance(archive_obj, zipfile.ZipFile):
+                is_file = not member.filename.endswith('/')
+                name = member.filename
+            else:
+                is_file = member.isfile()
+                name = member.name
+
+            if is_file:
+                if name.endswith(extension):
+                    file_paths.append(current_path + '/' + name)
+                elif name.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2')):
+                    with archive_obj.extractfile(member) as nested_archive:
+                        nested_archive_data = io.BytesIO(nested_archive.read())
+                        nested_archive_obj = open_archive(nested_archive_data, name)
+                        if nested_archive_obj:
+                            file_paths.extend(search_files_in_archive(nested_archive_obj, extension, current_path + '/' + name))
+            else:
+                with archive_obj.extractfile(member) as nested_folder:
+                    if nested_folder:
+                        folder_data = io.BytesIO(nested_folder.read())
+                        folder_obj = open_archive(folder_data, name)
+                        if folder_obj:
+                            file_paths.extend(search_files_in_archive(folder_obj, extension, current_path + '/' + name))
+
     return file_paths
 
 
-
-def main():
-    archive = 'path/to/compressed/file.zip'  # 圧縮ファイルのパスを指定
-    extension = '.log'  # 目的の拡張子を指定
-
-    archive_obj = open_archive(archive)
-    if archive_obj:
-        file_paths = search_files_in_archive(archive_obj, extension)
-        print(file_paths)
-    else:
-        print("Failed to open the archive.")
-
-if __name__ == '__main__':
-    main()
-
+file_data = open('your_file.zip', 'rb')
+archive_obj = open_archive(file_data, 'your_file.zip')
+file_paths = search_files_in_archive(archive_obj, '.log')
+print(file_paths)
