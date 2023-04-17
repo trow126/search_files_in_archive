@@ -8,10 +8,10 @@ def search_files_in_archive(archive_obj, extension, parent=""):
             if member.filename.endswith(extension):
                 print(f"Found target file: {current_path}")
                 file_paths.append(current_path)
-            elif member.filename.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2', '.tar.gz.bz2')):
-                with archive_obj.open(member) as nested_archive:
+             elif member.name.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2', '.tar.gz.bz2')):
+                with archive_obj.extractfile(member) as nested_archive:
                     nested_archive_data = io.BytesIO(nested_archive.read())
-                    nested_archive_obj = open_archive(nested_archive_data)
+                    nested_archive_obj = open_archive(nested_archive_data, member.name)
                     if nested_archive_obj:
                         file_paths.extend(search_files_in_archive(nested_archive_obj, extension, current_path))
     elif isinstance(archive_obj, tarfile.TarFile):
@@ -21,10 +21,10 @@ def search_files_in_archive(archive_obj, extension, parent=""):
             if member.name.endswith(extension):
                 print(f"Found target file: {current_path}")
                 file_paths.append(current_path)
-            elif member.name.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2', '.tar.gz.bz2')):
+             elif member.name.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2', '.tar.gz.bz2')):
                 with archive_obj.extractfile(member) as nested_archive:
                     nested_archive_data = io.BytesIO(nested_archive.read())
-                    nested_archive_obj = open_archive(nested_archive_data)
+                    nested_archive_obj = open_archive(nested_archive_data, member.name)
                     if nested_archive_obj:
                         file_paths.extend(search_files_in_archive(nested_archive_obj, extension, current_path))
 
