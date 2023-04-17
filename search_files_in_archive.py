@@ -23,11 +23,20 @@ def search_files_in_archive(archive_obj, extension, current_path=''):
             if is_file:
                 if name.endswith(extension):
                     file_paths.append(current_path + '/' + name)
-            elif name.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2', '.tar.gz.bz2')):
-                with archive_obj.extractfile(member) as nested_archive:
-                    nested_archive_data = io.BytesIO(nested_archive.read())
-                    nested_archive_obj = open_archive(nested_archive_data, name)
-                    if nested_archive_obj:
-                        file_paths.extend(search_files_in_archive(nested_archive_obj, extension, current_path + '/' + name))
+            else:
+                if name.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2', '.tar.gz.bz2')):
+                    with archive_obj.extractfile(member) as nested_archive:
+                        nested_archive_data = io.BytesIO(nested_archive.read())
+                        nested_archive_obj = open_archive(nested_archive_data, name)
+                        if nested_archive_obj:
+                            file_paths.extend(search_files_in_archive(nested_archive_obj, extension, current_path + '/' + name))
+                else:
+                    # 圧縮されたフォルダの場合
+                    with archive_obj.extractfile(member) as nested_folder:
+                        if nested_folder:
+                            folder_data = io.BytesIO(nested_folder.read())
+                            folder_obj = open_archive(folder_data, name)
+                            if folder_obj:
+                                file_paths.extend(search_files_in_archive(folder_obj, extension, current_path + '/' + name))
 
     return file_paths
