@@ -4,7 +4,7 @@ import gzip
 import bz2
 import io
 
-def open_archive(file_data):
+def open_archive(file_data, file_name=None):
     try:
         archive_obj = zipfile.ZipFile(file_data)
         print("Opened as ZIP")
@@ -23,7 +23,7 @@ def open_archive(file_data):
     file_data.seek(0)
     try:
         archive_obj = gzip.GzipFile(fileobj=file_data)
-        if archive_obj.name.endswith(".gz"):
+        if file_name and file_name.endswith(".gz"):
             print("Opened as GZ")
             return archive_obj
     except OSError:
@@ -32,7 +32,7 @@ def open_archive(file_data):
     file_data.seek(0)
     try:
         archive_obj = bz2.BZ2File(file_data)
-        if archive_obj.name.endswith(".bz2"):
+        if file_name and file_name.endswith(".bz2"):
             print("Opened as BZ2")
             return archive_obj
     except OSError:
