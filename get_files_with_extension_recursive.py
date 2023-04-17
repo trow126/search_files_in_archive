@@ -6,19 +6,19 @@ import bz2
 import os
 
 
-def open_archive(file_data, filename):
-    if filename.endswith('.zip'):
-        return zipfile.ZipFile(file_data)
-    elif filename.endswith('.tar'):
-        return tarfile.open(fileobj=file_data)
-    elif filename.endswith('.tar.gz'):
-        return tarfile.open(fileobj=file_data, mode='r:gz')
-    elif filename.endswith('.tar.bz2'):
-        return tarfile.open(fileobj=file_data, mode='r:bz2')
-    elif filename.endswith('.gz'):
-        return gzip.GzipFile(fileobj=file_data)
-    elif filename.endswith('.bz2'):
-        return bz2.BZ2File(file_data)
+def open_archive(file_path):
+    if file_path.endswith('.zip'):
+        return zipfile.ZipFile(file_path)
+    elif file_path.endswith('.tar'):
+        return tarfile.open(file_path)
+    elif file_path.endswith('.tar.gz'):
+        return tarfile.open(file_path, mode='r:gz')
+    elif file_path.endswith('.tar.bz2'):
+        return tarfile.open(file_path, mode='r:bz2')
+    elif file_path.endswith('.gz'):
+        return gzip.open(file_path)
+    elif file_path.endswith('.bz2'):
+        return bz2.open(file_path)
     else:
         return None
 
@@ -65,7 +65,18 @@ def search_files_in_archive(archive_obj, extension, current_path=''):
     return file_paths
 
 
-file_data = open('your_compressed_file', 'rb')  # 圧縮ファイルの名前を指定
-archive_obj = open_archive(file_data, 'your_compressed_file')  # 圧縮ファイルの名前を指定
-file_paths = search_files_in_archive(archive_obj, '.log')
-print(file_paths)
+def main():
+    archive = 'path/to/compressed/file.zip'  # 圧縮ファイルのパスを指定
+    extension = '.log'  # 目的の拡張子を指定
+
+    archive_obj = open_archive(archive)
+    if archive_obj:
+        file_paths = search_files_in_archive(archive_obj, extension)
+        for path in file_paths:
+            print("Found file:", path)
+    else:
+        print("Failed to open the archive.")
+
+
+if __name__ == '__main__':
+    main()
