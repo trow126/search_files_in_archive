@@ -1,42 +1,29 @@
-def search_files_in_archive(archive_obj, extension, current_path=''):
+def search_files_in_archive(archive_obj, target_ext):
     file_paths = []
 
-    if isinstance(archive_obj, (gzip.GzipFile, bz2.BZ2File)):
-        nested_archive_data = io.BytesIO(archive_obj.read())
-        nested_archive_obj = open_archive(nested_archive_data, archive_obj.name)
-        if nested_archive_obj:
-            file_paths.extend(search_files_in_archive(nested_archive_obj, extension, current_path))
-    else:
-        if isinstance(archive_obj, zipfile.ZipFile):
-            members = archive_obj.infolist()
-        else:
-            members = archive_obj.getmembers()
-
-        for member in members:
-            if isinstance(archive_obj, zipfile.ZipFile):
-                is_file = not member.filename.endswith('/')
-                name = member.filename
-            else:
-                is_file = member.isfile()
-                name = member.name
-
-            if is_file:
-                if name.endswith(extension):
-                    file_paths.append(current_path + '/' + name)
-            else:
-                if name.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2', '.tar.gz.bz2')):
-                    with archive_obj.extractfile(member) as nested_archive:
-                        nested_archive_data = io.BytesIO(nested_archive.read())
-                        nested_archive_obj = open_archive(nested_archive_data, name)
-                        if nested_archive_obj:
-                            file_paths.extend(search_files_in_archive(nested_archive_obj, extension, current_path + '/' + name))
-                else:
-                    # 圧縮されたフォルダの場合
-                    with archive_obj.extractfile(member) as nested_folder:
-                        if nested_folder:
-                            folder_data = io.BytesIO(nested_folder.read())
-                            folder_obj = open_archive(folder_data, name)
-                            if folder_obj:
-                                file_paths.extend(search_files_in_archive(folder_obj, extension, current_path + '/' + name))
+    if isinstance(archive_obj, zipfile.ZipFile):
+        for member in archive_obj.infolist():
+            if member.filename.endswith(target_ext):
+                file_paths.append(member.filename)
+            elif not member.is_dir():
+                with archive_obj.open(member) as file_data:
+                    inner_archive = open_archive(file_data, member.filename)
+                    if inner_archive:
+                        file_paths.extend(search_files_in_archive(inner_archive, target_ext))
+    elif isinstance(archive_obj, tarfile.TarFile):
+        for member in archive_obj.getmembers():
+            if member.name.endswith(target_ext):
+                file_paths.append(member.name)
+            elif not member.isdir():
+                file_data = archive_obj.extractfile(member)
+                if file_data:
+                    inner_archive = open_archive(file_data, member.name)
+                    if inner_archive:
+                        file_paths.extend(search_files_in_archive(inner_archive, target_ext))
+    elif isinstance(archive_obj, (gzip.GzipFile, bz2.BZ2File)):
+        file_data = io.BytesIO(archive_obj.read())
+        inner_archive = open_archive(file_data)
+        if inner_archive:
+            file_paths.extend(search_files_in_archive(inner_archive, target_ext))
 
     return file_paths
