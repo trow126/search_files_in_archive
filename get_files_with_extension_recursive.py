@@ -1,26 +1,39 @@
-import zipfile
-import tarfile
-import io
-import gzip
-import bz2
-import os
+def open_archive(file_data, file_name=None):
+    try:
+        archive_obj = zipfile.ZipFile(file_data)
+        print("Opened as ZIP")
+        return archive_obj
+    except zipfile.BadZipFile:
+        pass
 
+    file_data.seek(0)
+    try:
+        archive_obj = tarfile.open(fileobj=file_data)
+        print("Opened as TAR")
+        return archive_obj
+    except tarfile.ReadError:
+        pass
 
-def open_archive(file_path):
-    if file_path.endswith('.zip'):
-        return zipfile.ZipFile(file_path)
-    elif file_path.endswith('.tar'):
-        return tarfile.open(file_path)
-    elif file_path.endswith('.tar.gz'):
-        return tarfile.open(file_path, mode='r:gz')
-    elif file_path.endswith('.tar.bz2'):
-        return tarfile.open(file_path, mode='r:bz2')
-    elif file_path.endswith('.gz'):
-        return gzip.open(file_path)
-    elif file_path.endswith('.bz2'):
-        return bz2.open(file_path)
-    else:
-        return None
+    file_data.seek(0)
+    try:
+        archive_obj = gzip.GzipFile(fileobj=file_data)
+        if file_name and file_name.endswith(".gz"):
+            print("Opened as GZ")
+            return archive_obj
+    except OSError:
+        pass
+
+    file_data.seek(0)
+    try:
+        archive_obj = bz2.BZ2File(file_data)
+        if file_name and file_name.endswith(".bz2"):
+            print("Opened as BZ2")
+            return archive_obj
+    except OSError:
+        pass
+
+    return None
+
 
 
 def search_files_in_archive(archive_obj, extension, current_path=''):
@@ -28,7 +41,7 @@ def search_files_in_archive(archive_obj, extension, current_path=''):
 
     if isinstance(archive_obj, (gzip.GzipFile, bz2.BZ2File)):
         nested_archive_data = io.BytesIO(archive_obj.read())
-        nested_archive_obj = open_archive(nested_archive_data)
+        nested_archive_obj = open_archive(nested_archive_data, current_path)
         if nested_archive_obj:
             file_paths.extend(search_files_in_archive(nested_archive_obj, extension, current_path))
     else:
@@ -50,7 +63,7 @@ def search_files_in_archive(archive_obj, extension, current_path=''):
                     file_paths.append(current_path + '/' + name)
                 elif name.endswith(('.zip', '.tar', '.tar.gz', '.tar.bz2', '.gz', '.bz2')):
                     nested_archive_data = io.BytesIO(archive_obj.read(member))
-                    nested_archive_obj = open_archive(nested_archive_data)
+                    nested_archive_obj = open_archive(nested_archive_data, name)
                     if nested_archive_obj:
                         file_paths.extend(search_files_in_archive(nested_archive_obj, extension, current_path + '/' + name))
             else:
@@ -63,20 +76,3 @@ def search_files_in_archive(archive_obj, extension, current_path=''):
                                 file_paths.extend(search_files_in_archive(folder_obj, extension, current_path + '/' + name))
 
     return file_paths
-
-
-def main():
-    archive = 'path/to/compressed/file.zip'  # 圧縮ファイルのパスを指定
-    extension = '.log'  # 目的の拡張子を指定
-
-    archive_obj = open_archive(archive)
-    if archive_obj:
-        file_paths = search_files_in_archive(archive_obj, extension)
-        for path in file_paths:
-            print("Found file:", path)
-    else:
-        print("Failed to open the archive.")
-
-
-if __name__ == '__main__':
-    main()
