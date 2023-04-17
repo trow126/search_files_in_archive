@@ -27,4 +27,8 @@ if archive_obj:
     print("Found files:", len(file_paths))
     print("Grouped DataFrames:")
     for num_columns, dataframes in grouped_dataframes.items():
-        combined_dataframe =
+        combined_dataframe = pd.concat(dataframes, ignore_index=True)
+        print(f"Combined DataFrame for {num_columns} columns:")
+        print(combined_dataframe)
+else:
+    print("Failed to open the archive.")
