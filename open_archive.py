@@ -23,16 +23,18 @@ def open_archive(file_data):
     file_data.seek(0)
     try:
         archive_obj = gzip.GzipFile(fileobj=file_data)
-        print("Opened as GZ")
-        return archive_obj
+        if archive_obj.name.endswith(".gz"):
+            print("Opened as GZ")
+            return archive_obj
     except OSError:
         pass
 
     file_data.seek(0)
     try:
         archive_obj = bz2.BZ2File(file_data)
-        print("Opened as BZ2")
-        return archive_obj
+        if archive_obj.name.endswith(".bz2"):
+            print("Opened as BZ2")
+            return archive_obj
     except OSError:
         pass
 
