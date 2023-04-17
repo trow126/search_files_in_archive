@@ -53,7 +53,12 @@ def search_files_in_archive(archive_obj, target_ext, parent_path='', dataframes=
 
     return file_paths, dataframes
 
+def main():
+    archive = 'path/to/compressed/file.zip'  # 圧縮ファイルのパスを指定
+    extension = '.log'  # 目的の拡張子を指定
 
+    archive_obj = open_archive(archive)
+    if archive_obj:
         file_paths, dataframes = search_files_in_archive(archive_obj, extension)
         for path in file_paths:
             print("Found file:", path)
