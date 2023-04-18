@@ -31,8 +31,32 @@ def search_files_in_archive(path, target_ext, parent_path='', compressed_path=No
 
     file_paths = []
 
-    # 省略: search_files_in_archiveのコードは変更せず、そのまま使います
-    # ただし、各file_paths.append()の部分で、compressed_pathが存在する場合はそれを含めてパスを生成します。
+    if isinstance(path, zipfile.ZipFile):
+        for member in path.infolist():
+            full_path = (compressed_path + ':' if compressed_path else '') + parent_path + '/' + member.filename
+            if member.filename.endswith(target_ext):
+                file_paths.append(full_path)
+            elif not member.is_dir():
+                with path.open(member) as file_data:
+                    inner_archive = open_archive(file_data, member.filename)
+                    if inner_archive:
+                        file_paths.extend(search_files_in_archive(inner_archive, target_ext, full_path, compressed_path))
+    elif isinstance(path, tarfile.TarFile):
+        for member in path.getmembers():
+            full_path = (compressed_path + ':' if compressed_path else '') + parent_path + '/' + member.name
+            if member.name.endswith(target_ext):
+                file_paths.append(full_path)
+            elif not member.isdir():
+                file_data = path.extractfile(member)
+                if file_data:
+                    inner_archive = open_archive(file_data, member.name)
+                    if inner_archive:
+                        file_paths.extend(search_files_in_archive(inner_archive, target_ext, full_path, compressed_path))
+    elif isinstance(path, (gzip.GzipFile, bz2.BZ2File)):
+        file_data = io.BytesIO(path.read())
+        inner_archive = open_archive(file_data)
+        if inner_archive:
+            file_paths.extend(search_files_in_archive(inner_archive, target_ext, parent_path, compressed_path))
 
     return file_paths
 
