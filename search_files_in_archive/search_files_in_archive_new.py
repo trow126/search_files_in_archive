@@ -6,6 +6,39 @@ import gzip
 import bz2
 
 
+def open_archive(file_data, file_name=None):
+    try:
+        archive_obj = zipfile.ZipFile(file_data)
+        return archive_obj
+    except zipfile.BadZipFile:
+        pass
+
+    file_data.seek(0)
+    try:
+        archive_obj = tarfile.open(fileobj=file_data)
+        return archive_obj
+    except tarfile.ReadError:
+        pass
+
+    file_data.seek(0)
+    try:
+        archive_obj = gzip.GzipFile(fileobj=file_data)
+        if file_name and file_name.endswith(".gz"):
+            return archive_obj
+    except OSError:
+        pass
+
+    file_data.seek(0)
+    try:
+        archive_obj = bz2.BZ2File(file_data)
+        if file_name and file_name.endswith(".bz2"):
+            return archive_obj
+    except OSError:
+        pass
+
+    return None
+
+
 def search_files_in_archive(path_or_data, target_ext, parent_path='', file_name=None):
     file_paths = []
 
@@ -55,3 +88,14 @@ def search_files_in_archive(path_or_data, target_ext, parent_path='', file_name=
                 file_paths.extend(search_files_in_archive(inner_archive, target_ext, parent_path, file_name=file_name))
 
     return file_paths
+
+
+def main():
+    path = 'path/to/compressed/file.zip'  # 圧縮ファイルのパスまたはフォルダパスを指定
+    extension = '.log'  # 目的の拡張子を指定
+
+    file_paths = search_files_in_archive(path, extension)
+    for found_path in file_paths:
+        print("Found file:", found_path)
+
+
