@@ -1,6 +1,5 @@
 import io
 import os
-import pandas as pd
 import zipfile
 import tarfile
 import gzip
@@ -60,6 +59,7 @@ def search_files_in_archive(path, target_ext, parent_path=''):
 
             elif isinstance(archive_obj, (gzip.GzipFile, bz2.BZ2File)):
                 file_data = io.BytesIO(archive_obj.read())
+                file_data.seek(0)
                 inner_archive = open_archive(file_data)
                 if inner_archive:
                     file_paths.extend(search_files_in_archive(inner_archive, target_ext, parent_path))
