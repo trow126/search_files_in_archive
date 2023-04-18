@@ -81,3 +81,6 @@ def main():
             print("Found file:", path)
     else:
         print("Failed to open the archive.")
+        
+if __name__ == '__main__':
+    main()
