@@ -10,16 +10,13 @@ import datetime
 def open_archive(file_data, file_name=None):
     # 省略: open_archiveのコードは変更せず、そのまま使います
 
-def search_files_in_archive(path, target_ext, parent_path='', is_root=True):
+def search_files_in_archive(path, target_ext, parent_path='', compressed_path=None):
     if isinstance(path, str):  # ファイルパスが渡された場合
         if os.path.isfile(path):  # ファイルが存在する場合
             with open(path, 'rb') as f:
                 archive_obj = open_archive(f)
                 if archive_obj:
-                    file_paths = search_files_in_archive(archive_obj, target_ext, parent_path, is_root=False)
-                    if is_root:  # ルートの圧縮ファイルのパスを追加
-                        file_paths.append(path)
-                    return file_paths
+                    return search_files_in_archive(archive_obj, target_ext, parent_path, compressed_path=path)
                 else:
                     return []
         elif os.path.isdir(path):  # ディレクトリが存在する場合
@@ -35,6 +32,7 @@ def search_files_in_archive(path, target_ext, parent_path='', is_root=True):
     file_paths = []
 
     # 省略: search_files_in_archiveのコードは変更せず、そのまま使います
+    # ただし、各file_paths.append()の部分で、compressed_pathが存在する場合はそれを含めてパスを生成します。
 
     return file_paths
 
