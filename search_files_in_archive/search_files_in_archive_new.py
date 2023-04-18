@@ -19,22 +19,27 @@ def search_files_in_archive(path, target_ext, parent_path=''):
             if current_path.endswith(target_ext):
                 file_paths.append(current_parent_path + '/' + os.path.basename(current_path))
 
+            archive_obj = None
+
             try:
                 archive_obj = zipfile.ZipFile(current_path)
+                if archive_obj is not None:
+                    for member in archive_obj.namelist():
+                        full_path = current_parent_path + '/' + member
+                        if member.endswith(target_ext):
+                            file_paths.append(full_path)
             except zipfile.BadZipFile:
-                archive_obj = None
+                pass
 
-            if archive_obj is None:
-                try:
-                    archive_obj = tarfile.open(current_path)
-                except tarfile.ReadError:
-                    archive_obj = None
-
-            if archive_obj is not None:
-                for member in archive_obj.getnames():
-                    full_path = current_parent_path + '/' + member
-                    if member.endswith(target_ext):
-                        file_paths.append(full_path)
+            try:
+                archive_obj = tarfile.open(current_path)
+                if archive_obj is not None:
+                    for member in archive_obj.getnames():
+                        full_path = current_parent_path + '/' + member
+                        if member.endswith(target_ext):
+                            file_paths.append(full_path)
+            except tarfile.ReadError:
+                pass
 
         elif os.path.isdir(current_path):
             with os.scandir(current_path) as entries:
