@@ -6,9 +6,10 @@ def search_files_in_archive(path, target_ext, parent_path=''):
             with open(path, 'rb') as f:
                 archive_obj = open_archive(f)
                 if archive_obj:
-                    return search_files_in_archive(archive_obj, target_ext, parent_path)
-                else:
-                    return []
+                    file_paths.extend(search_files_in_archive(archive_obj, target_ext, path))
+                elif path.endswith(target_ext):
+                    file_paths.append(path)
+            return file_paths
         elif os.path.isdir(path):  # ディレクトリが存在する場合
             for root, _, files in os.walk(path):
                 for file in files:
